@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-csi-migration-3
+  namespace: demo-csi-migration
+spec:
+  selector:
+    matchLabels:
+      app: demo-csi-migration-3
+  serviceName: demo-csi-migration-3
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: demo-csi-migration-3
+    spec:
+      containers:
+        - name: demo-csi-migration-3
+          image: nginx
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 1Gi
