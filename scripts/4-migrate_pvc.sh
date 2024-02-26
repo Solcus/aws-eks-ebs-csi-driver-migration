@@ -22,6 +22,8 @@ VOLUME_ID=$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore
 VOLUME_SIZE=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.resources.requests.storage}')
 VOLUME_DELETION_POLICY=$(kubectl get pv $(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.volumeName}') -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')
 
+echo "NAMESPACE: $NAMESPACE"
+echo "PVC_NAME: $PVC_NAME"
 echo "VOLUME_NAME: $VOLUME_NAME"
 echo "VOLUME_ID: $VOLUME_ID"
 echo "VOLUME_SIZE: $VOLUME_SIZE"
@@ -125,6 +127,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: $PVC_NAME
+  namespace: $NAMESPACE
 spec:
   accessModes:
   - ReadWriteOnce
@@ -135,7 +138,7 @@ spec:
   dataSource:
     name: $PVC_NAME-snapshot
     kind: VolumeSnapshot
-    apiGroup: snapshot.storage.k8s.io
+    apiGroup: snapshot.storage.k8s.io/v1
 EOF
 
 # Remove old PV

@@ -34,7 +34,8 @@ fi
 if [[ "$migr_volumeBindingMode" != "Immediate" ]]; then
     echo ">> Setting StorageClass volumeBindingMode from '$migr_volumeBindingMode' to 'Immediate'"
     if [[ $DRY_RUN == "false" ]]; then
-        kubectl patch sc $NEW_STORAGE_CLASS -p '{"volumeBindingMode": "Immediate"}'
+        kubectl get sc $NEW_STORAGE_CLASS -o json | jq '.volumeBindingMode = "Immediate"' > $runtime_folder/${NEW_STORAGE_CLASS}_before.json
+        kubectl replace -f $runtime_folder/${NEW_STORAGE_CLASS}_before.json --force
     fi
 fi
 

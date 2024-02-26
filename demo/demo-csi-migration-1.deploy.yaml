@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-csi-migration-1
+  namespace: demo-csi-migration
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-csi-migration-1
+  template:
+    metadata:
+      labels:
+        app: demo-csi-migration-1
+    spec:
+      containers:
+      - name: demo-csi-migration-1-container
+        image: nginx
+        volumeMounts:
+        - name: nginx-persistent-storage
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: nginx-persistent-storage
+        persistentVolumeClaim:
+          claimName: demo-csi-migration-1
