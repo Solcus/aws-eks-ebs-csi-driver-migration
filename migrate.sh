@@ -13,7 +13,7 @@ while read -r pvc; do
     
     if [[ $DRY_RUN == "false" ]]; then
         echo "> Migrating PVC $pvc_name in namespace $namespace"
-        source ./scripts/4-migrate.sh $namespace $pvc_name
+        source ./scripts/4-migrate_pvc.sh $namespace $pvc_name
     else
         echo "> DRY_RUN: source ./scripts/4-migrate.sh $namespace $pvc_name"
     fi
