@@ -78,6 +78,7 @@ fi
 
 ## Volume Snapshot Classes
 NEW_SNAPSHOT_CLASS=$(kubectl get volumesnapshotclass | grep "$NEW_CSI_DRIVER" | awk '{print $1}')
+vsc_api_version=$(kubectl get volumesnapshotclass $NEW_SNAPSHOT_CLASS -o jsonpath='{.apiVersion}')
 
 create_new_snapshot_class="false"
 
@@ -109,6 +110,7 @@ NEW_STORAGE_CLASS  : $NEW_STORAGE_CLASS
 NEW_SNAPSHOT_CLASS : $NEW_SNAPSHOT_CLASS
 CREATE_NEW_SC      : $create_new_storage_class
 CREATE_NEW_VSC     : $create_new_snapshot_class
+VSC_API_VERSION    : $vsc_api_version
 PARAMETERS         : $parameters
 SNAPSHOT_PREFIX    : $snapshot_prefix
 NAMESPACES         : $namespaces

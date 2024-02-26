@@ -107,6 +107,19 @@ All non-default StorageClasses are not migrated, because this requires manual in
 
 To verify everything works as expected, try a dryrun first.
 
+### Simple dryrun
+
+This will automatically pick up the old and new StorageClas/SnapshotClass, and select all PVCs in all namespaces.
+This option is suitable for most use-cases.
+
+```bash
+bash migrate.sh --dry-run
+```
+
+### Custom dryrun
+
+You can optionally specify the target StorageClass, SnapshotClass, SnapshotPrefix, Parameters and Namespaces.
+
 ```bash
 bash migrate.sh \
     --storage-class "storageclassname" \
@@ -123,6 +136,9 @@ bash migrate.sh \
     # OPTIONAL: Run the migration in dryrun mode. This will not make any changes to the cluster.
 ```
 
-If everything looks as expected, you can run the migration without the `--dry-run` flag.
+### Execution
+
+If everything looks as expected, you can run the same migration options without the `--dry-run` flag.
+
 
 

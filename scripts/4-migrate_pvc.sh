@@ -138,7 +138,7 @@ spec:
   dataSource:
     name: $PVC_NAME-snapshot
     kind: VolumeSnapshot
-    apiGroup: snapshot.storage.k8s.io/v1
+    apiGroup: $vsc_api_version
 EOF
 
 # Remove old PV
