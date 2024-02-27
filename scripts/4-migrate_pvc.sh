@@ -141,7 +141,7 @@ echo "VSC_STATUS: $VSC_STATUS"
 echo "VS_STATUS: $VS_STATUS"
 
 if [ "$VS_READY" != "true" ]; then
-  echo ">> VolumeSnapshotContent and VolumeSnapshot are not ready... Skipping PVC migration. Debug:"
+  echo "!! VolumeSnapshotContent and VolumeSnapshot are not ready... Skipping PVC migration. Debug:"
   cat $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
   cat $runtime_folder/tmp_vs_${PVC_NAME}.yaml
   exit 1
