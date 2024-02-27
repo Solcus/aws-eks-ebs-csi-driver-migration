@@ -13,5 +13,7 @@ if [[ "$migr_volumeBindingMode" != $(kubectl get sc $NEW_STORAGE_CLASS -o jsonpa
     fi
 fi
 
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+
 # REMOVE temporary files
 rm -drf $runtime_folder

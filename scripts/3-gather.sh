@@ -50,3 +50,5 @@ else
     echo "None"
 fi
 echo 
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read

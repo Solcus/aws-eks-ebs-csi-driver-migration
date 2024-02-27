@@ -40,3 +40,5 @@ if [[ "$migr_volumeBindingMode" != "Immediate" ]]; then
 fi
 
 echo
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read

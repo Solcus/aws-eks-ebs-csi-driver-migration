@@ -18,7 +18,8 @@ fi
 
 # GET Volume information
 VOLUME_NAME=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.volumeName}')
-VOLUME_ID=$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}')
+# VOLUME_ID=$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}')
+VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}' | awk -F'vol-' '{print $2}')"
 VOLUME_SIZE=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.resources.requests.storage}')
 VOLUME_DELETION_POLICY=$(kubectl get pv $(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.volumeName}') -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')
 
@@ -28,6 +29,8 @@ echo "VOLUME_NAME: $VOLUME_NAME"
 echo "VOLUME_ID: $VOLUME_ID"
 echo "VOLUME_SIZE: $VOLUME_SIZE"
 echo "VOLUME_DELETION_POLICY: $VOLUME_DELETION_POLICY"
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
 
 # CREATE a snapshot of the volume
 create_snapshot() {
@@ -72,7 +75,8 @@ for i in {1..30}; do
 done
 
 # CREATE VolumeSnapshotContent
-cat <<EOF | kubectl apply -f -
+# cat <<EOF | kubectl apply -f -
+cat <<EOF >> $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotContent
 metadata:
@@ -90,7 +94,8 @@ spec:
 EOF
 
 # CREATE VolumeSnapshot
-cat <<EOF | kubectl apply -f -
+# cat <<EOF | kubectl apply -f -
+cat <<EOF >> $runtime_folder/tmp_vs_${PVC_NAME}.yaml
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshot
 metadata:
@@ -102,7 +107,49 @@ spec:
     volumeSnapshotContentName: $PVC_NAME-snapshot-content
 EOF
 
+kubectl apply -f $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
+kubectl apply -f $runtime_folder/tmp_vs_${PVC_NAME}.yaml
 
+# exit 1
+
+# Check if the VolumeSnapshotContent and VolumeSnapshot are ready
+echo "Checking if VolumeSnapshotContent is ready..."
+VS_READY="false"
+sleep 3
+
+for i in {1..12}; do
+  VSC_STATUS=$(kubectl get volumesnapshotcontent $PVC_NAME-snapshot-content -n $NAMESPACE -o jsonpath='{.status.readyToUse}')
+  VS_STATUS=$(kubectl get volumesnapshot $PVC_NAME-snapshot -n $NAMESPACE -o jsonpath='{.status.readyToUse}')
+
+  if [ "$VSC_STATUS" == "true" ] && [ "$VS_STATUS" == "true" ]; then
+    echo ">> VolumeSnapshotContent and VolumeSnapshot are ready"
+    VS_READY="true"
+    break
+  else
+    echo "VolumeSnapshotContent and VolumeSnapshot are not ready... Waiting for 5 seconds..."
+    sleep 5
+  fi
+
+done
+
+if [ "$VS_READY" != "true" ]; then
+  echo "VolumeSnapshotContent and VolumeSnapshot are not ready... Skipping PVC migration. Debug:"
+  cat $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
+  cat $runtime_folder/tmp_vs_${PVC_NAME}.yaml
+  exit 1
+fi
+
+echo "SNAPSHOT_ID: $SNAPSHOT_ID"
+echo "VSC_STATUS: $VSC_STATUS"
+echo "VS_STATUS: $VS_STATUS"
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+
+# Set volume to Retain
+kubectl patch pv $VOLUME_NAME -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
 
 # REMOVE the old PVC
 kubectl delete pvc $PVC_NAME -n $NAMESPACE &
