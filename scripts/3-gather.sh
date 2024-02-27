@@ -51,4 +51,4 @@ else
 fi
 echo 
 
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to start migrating (step by step)..." && read

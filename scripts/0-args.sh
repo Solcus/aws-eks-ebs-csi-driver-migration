@@ -66,7 +66,7 @@ OLD_CSI_DRIVER="kubernetes.io/aws-ebs"  # in-tree driver - deprecated in K8S v1.
 NEW_CSI_DRIVER="ebs.csi.aws.com"        # AWS EBS CSI driver
 
 ## Storage Classes
-OLD_STORAGE_CLASS=$(kubectl get sc | grep "$OLD_CSI_DRIVER" | awk '{print $1}' | head -n 1)
+OLD_STORAGE_CLASS=$(kubectl get sc -o jsonpath='{.items[?(@.provisioner=="'$OLD_CSI_DRIVER'")].metadata.name}')
 
 # If new storage class var is set, use that, else lookup
 if [[ -z "$new_storage_class_name" ]]; then
@@ -108,4 +108,4 @@ SNAPSHOT_PREFIX    : $snapshot_prefix
 NAMESPACES         : $namespaces
 EOF
 
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to start validating..." && read

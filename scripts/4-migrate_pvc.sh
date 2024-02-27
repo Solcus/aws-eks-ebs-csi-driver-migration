@@ -30,10 +30,11 @@ echo "VOLUME_ID: $VOLUME_ID"
 echo "VOLUME_SIZE: $VOLUME_SIZE"
 echo "VOLUME_DELETION_POLICY: $VOLUME_DELETION_POLICY"
 
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to create the EBS snapshot, VolumeSnapshotContent and VolumeSnapshot..." && read
 
 # CREATE a snapshot of the volume
 create_snapshot() {
+  [[ $DRY_RUN == "true" ]] && echo ">> DRY_RUN: Skipping snapshot creation" && return 0
   SNAPSHOT=$(aws ec2 create-snapshot \
     --volume-id $VOLUME_ID \
     --description "Migration snapshot of PVC $PVC_NAME in namespace $NAMESPACE" \
@@ -46,7 +47,7 @@ create_snapshot
 
 # CHECK if snapshot creation was successful, by checking snapshotId
 if [ -z "$SNAPSHOT" ]; then
-  echo "Snapshot creation failed"
+  echo ">> Snapshot creation failed"
   exit 1
 else 
   SNAPSHOT_ID=$(echo $SNAPSHOT | jq -r '.SnapshotId')
@@ -60,16 +61,16 @@ for i in {1..30}; do
     --query Snapshots[0].State)
 
   if [ "$SNAPSHOT_STATUS" == "\"completed\"" ]; then
-    echo "Snapshot created successfully: $SNAPSHOT_ID"
+    echo ">> Snapshot created successfully: $SNAPSHOT_ID"
     break
   elif [ "$SNAPSHOT_STATUS" == "\"pending\"" ]; then
-    echo "Snapshot creation in progress, waiting for 10 seconds..."
+    echo ".. Snapshot creation in progress, waiting for 10 seconds..."
     sleep 10
   elif [ "$SNAPSHOT_STATUS" == "\"error\"" ]; then
-    echo "Snapshot creation failed"
+    echo ">> Snapshot creation failed"
     exit 1
   else
-    echo "Snapshot creation status: $SNAPSHOT_STATUS ..."
+    echo ".. Snapshot creation status: $SNAPSHOT_STATUS ..."
   fi
 
 done
@@ -107,13 +108,16 @@ spec:
     volumeSnapshotContentName: $PVC_NAME-snapshot-content
 EOF
 
-kubectl apply -f $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
-kubectl apply -f $runtime_folder/tmp_vs_${PVC_NAME}.yaml
+if [ "$DRY_RUN" != "false" ]; then
+  echo ">> DRY_RUN: Skipping VolumeSnapshotContent and VolumeSnapshot creation"
+  cat $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
+  cat $runtime_folder/tmp_vs_${PVC_NAME}.yaml
+else
+  kubectl apply -f $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
+  kubectl apply -f $runtime_folder/tmp_vs_${PVC_NAME}.yaml
+fi
 
-# exit 1
-
-# Check if the VolumeSnapshotContent and VolumeSnapshot are ready
-echo "Checking if VolumeSnapshotContent is ready..."
+echo ">> Checking if VolumeSnapshotContent and VolumeSnapshot are ready..."
 VS_READY="false"
 sleep 3
 
@@ -126,30 +130,29 @@ for i in {1..12}; do
     VS_READY="true"
     break
   else
-    echo "VolumeSnapshotContent and VolumeSnapshot are not ready... Waiting for 5 seconds..."
+    echo ".. VolumeSnapshotContent and VolumeSnapshot are not ready... Waiting for 5 seconds..."
     sleep 5
   fi
 
 done
 
+echo "SNAPSHOT_ID: $SNAPSHOT_ID"
+echo "VSC_STATUS: $VSC_STATUS"
+echo "VS_STATUS: $VS_STATUS"
+
 if [ "$VS_READY" != "true" ]; then
-  echo "VolumeSnapshotContent and VolumeSnapshot are not ready... Skipping PVC migration. Debug:"
+  echo ">> VolumeSnapshotContent and VolumeSnapshot are not ready... Skipping PVC migration. Debug:"
   cat $runtime_folder/tmp_vsc_${PVC_NAME}.yaml
   cat $runtime_folder/tmp_vs_${PVC_NAME}.yaml
   exit 1
 fi
 
-echo "SNAPSHOT_ID: $SNAPSHOT_ID"
-echo "VSC_STATUS: $VSC_STATUS"
-echo "VS_STATUS: $VS_STATUS"
-
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to set the PV reclaim policy to Retain..." && read
 
 # Set volume to Retain
 kubectl patch pv $VOLUME_NAME -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
 
-
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to replace the PVC and PV..." && read
 
 # REMOVE the old PVC
 kubectl delete pvc $PVC_NAME -n $NAMESPACE &
@@ -158,11 +161,11 @@ kubectl delete pvc $PVC_NAME -n $NAMESPACE &
 for i in {1..30}; do
   PVC_STATUS=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.status.phase}')
   if [ -z "$PVC_STATUS" ]; then
-    echo "Old PVC deleted successfully"
+    echo ">> Old PVC deleted successfully"
     break
   else
-    echo "PVC deletion in progress, waiting for 2 seconds..."
-    echo "PVC status: $PVC_STATUS"
+    echo ".. PVC deletion in progress, waiting for 2 seconds..."
+    echo ".. PVC status: $PVC_STATUS"
     kubectl patch pvc $PVC_NAME -n $NAMESPACE -p '{"metadata":{"finalizers": []}}' --type=merge
     sleep 2
   fi
@@ -195,11 +198,11 @@ kubectl delete pv $VOLUME_NAME &
 for i in {1..30}; do
   PV_STATUS=$(kubectl get pv $VOLUME_NAME -o jsonpath='{.status.phase}')
   if [ -z "$PV_STATUS" ]; then
-    echo "Old PV deleted successfully"
+    echo ">> Old PV deleted successfully"
     break
   else
-    echo "PV deletion in progress, waiting for 2 seconds..."
-    echo "PV status: $PV_STATUS"
+    echo ".. PV deletion in progress, waiting for 2 seconds..."
+    echo ".. PV status: $PV_STATUS"
     kubectl patch pv $VOLUME_NAME -p '{"metadata":{"finalizers": []}}' --type=merge
     sleep 2
   fi

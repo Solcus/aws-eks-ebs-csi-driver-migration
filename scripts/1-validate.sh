@@ -45,4 +45,4 @@ else
     echo ">> VolumeSnapshotClass '$NEW_SNAPSHOT_CLASS' exists"
 fi
 
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to continue..." && read
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to prepare the SC..." && read
