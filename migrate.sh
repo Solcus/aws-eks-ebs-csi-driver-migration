@@ -13,11 +13,8 @@ while read -r pvc; do
 
     echo "> Migrating PVC $pvc_name in namespace $namespace"
 
-    if [[ $DRY_RUN == "false" ]]; then
-        source ./scripts/4-migrate_pvc.sh $namespace $pvc_name
-    else
-        echo "> DRY_RUN: source ./scripts/4-migrate.sh $namespace $pvc_name"
-    fi
+    source ./scripts/4-migrate_pvc.sh $namespace $pvc_name
+
 done <<< "$(cat $runtime_folder/temp-pvcs-with-default-sc.txt)"
 
 source ./scripts/5-cleanup.sh

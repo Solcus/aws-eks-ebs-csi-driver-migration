@@ -4,6 +4,9 @@
 # :: SETS global variables
 
 # Default values
+
+set -e
+
 new_storage_class_name=""
 new_snapshot_class_name=""
 snapshot_prefix=""
