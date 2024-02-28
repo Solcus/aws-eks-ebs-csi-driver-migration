@@ -15,18 +15,21 @@ ATTACHED_VOLUMES=$(aws ec2 describe-volumes --filters "Name=attachment.instance-
 ATTACHED_VOLUMES=$(echo "$ATTACHED_VOLUMES" | tr '  ' ' ')
 
 echo "Attached Volumes: $ATTACHED_VOLUMES"
-echo "Amount: $(echo "$ATTACHED_VOLUMES" | wc -l)"
 
 # Get all PersistentVolumes in the Kubernetes cluster
 K8S_PVS=$(kubectl get pv --no-headers -o custom-columns=":spec.awsElasticBlockStore.volumeID" | awk -F'/' '{print $NF}')
-# Add volumeHandles to that
+K8S_PVS+=$'\n'
 K8S_PVS+=$(kubectl get pv --no-headers -o custom-columns=":spec.csi.volumeHandle" | awk -F'/' '{print $NF}')
+
+# echo "K8S PVs:"
+# echo $K8S_PVS
 
 # Initialize an empty array to hold orphaned volumes
 ORPHANED_VOLUMES=()
 
 # Check each attached volume against Kubernetes PVs
 for VOLUME in $ATTACHED_VOLUMES; do
+    echo ".. Checking volume: $VOLUME"
     if ! echo "$K8S_PVS" | grep -qw "$VOLUME"; then
         ORPHANED_VOLUMES+=("$VOLUME")
     fi
@@ -48,11 +51,22 @@ for VOLUME in "${ORPHANED_VOLUMES[@]}"; do
     # echo "$VOLUME - $volume_name - $pvc_name"
     
     if [[ "$pvc_name" != "pvc-" ]]; then
-        pv_exists=$(kubectl get pv | grep "$pvc_name")
+        echo ".. PVC: $pvc_name - Volume: $VOLUME"
+        pv_exist=$(kubectl get pv | grep "$pvc_name")
+        pvc_exist=$(kubectl get pvc -A | grep "$pvc_name")
+
+        echo "PV: $pv_exist" && echo "PVC: $pvc_exist"
+
         if [[ -z "$pv_exists" ]]; then
-            echo "PVC '$pvc_name' - Volume $VOLUME - does not exists in the cluster"
+            echo "-- PV '$pvc_name' - Volume $VOLUME"
         else
-            echo "PVC '$pvc_name' - Volume $VOLUME - exists in the cluster"
+            echo "++ PV '$pvc_name' - Volume $VOLUME"
+        fi
+
+        if [[ -z "$pvc_exists" ]]; then
+            echo "-- PVC for '$pvc_name' - Volume $VOLUME"
+        else
+            echo "++ PVC for '$pvc_name' - Volume $VOLUME"
         fi
     fi
 
@@ -69,4 +83,3 @@ done
 # done
 
 
-15.8 -ecb

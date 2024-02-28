@@ -19,7 +19,16 @@ fi
 # GET Volume information
 VOLUME_NAME=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.volumeName}')
 # VOLUME_ID=$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}')
-VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}' | awk -F'vol-' '{print $2}')"
+
+# If the olddriver is kubernetes.io/aws-ebs, then the volumeID is in awsElasticBlockStore.volumeID
+# If the olddriver is ebs.csi.aws.com, then the volumeID is in csi.volumeHandle
+if [[ "$OLD_CSI_DRIVER" == "kubernetes.io/aws-ebs" ]]; then
+  VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}' | awk -F'vol-' '{print $2}')"
+elif [[ "$OLD_CSI_DRIVER" == "ebs.csi.aws.com" ]]; then
+  VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.csi.volumeHandle}' | awk -F'vol-' '{print $2}')"
+fi
+
+# VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}' | awk -F'vol-' '{print $2}')"
 VOLUME_SIZE=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.resources.requests.storage}')
 VOLUME_DELETION_POLICY=$(kubectl get pv $(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.volumeName}') -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')
 

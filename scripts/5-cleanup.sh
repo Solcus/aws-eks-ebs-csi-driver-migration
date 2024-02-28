@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to detach the old volume from the node instance..." && read
+
+# DETACH old volume from the node instance
+if [[ $DRY_RUN == "false" ]]; then
+    echo ">> Detaching old volume from the node instance..."
+    aws ec2 detach-volume --volume-id $VOLUME_ID --force
+else 
+    echo ">> DRY_RUN: aws ec2 detach-volume --volume-id $VOLUME_ID --force"
+fi
+
 [[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to update the SC..." && read
 
 # RESTORE StorageClass defaults
