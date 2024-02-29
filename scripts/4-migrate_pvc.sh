@@ -275,5 +275,22 @@ else
 
 fi
 
+# DETACH old volume from the node instance
+echo ">> Detaching old volume from the node instance..."
+if [[ $DRY_RUN == "false" ]]; then
+    sleep 5
+    aws ec2 detach-volume --volume-id $VOLUME_ID | jq
+    # aws ec2 wait volume-available --volume-ids $VOLUME_ID
+else 
+    set +e
+    aws ec2 detach-volume --volume-id $VOLUME_ID --dry-run
+    set -e
+fi
+
+
 echo ">> Migration of PVC $PVC_NAME in namespace $NAMESPACE is complete."
 echo 
+
+
+
+
