@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# Preperations
 source ./scripts/0-args.sh
 source ./scripts/1-validate.sh
 source ./scripts/2-prereqs.sh
@@ -17,4 +18,5 @@ while read -r pvc; do
 
 done <<< "$(cat $runtime_folder/temp-pvcs-with-default-sc.txt)"
 
+# Cleanup
 source ./scripts/5-cleanup.sh

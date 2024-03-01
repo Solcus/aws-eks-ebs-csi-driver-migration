@@ -43,7 +43,7 @@ echo ">> PVCs using default SC: (automatic migration)"
 if [[ -s $runtime_folder/temp-pvcs-with-default-sc.txt ]]; then
     cat $runtime_folder/temp-pvcs-with-default-sc.txt
 else
-    echo "None"
+    echo "-  None"
 fi
 echo
 
@@ -51,8 +51,8 @@ echo ">> PVCs using custom SC: (needs manual migration for maintainers side)"
 if [[ -s $runtime_folder/temp-pvcs-with-custom-sc.txt ]]; then
     cat $runtime_folder/temp-pvcs-with-custom-sc.txt
 else
-    echo "None"
+    echo "-  None"
 fi
 echo 
 
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to start migrating (step by step)..." && read
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to start migrating..." && read

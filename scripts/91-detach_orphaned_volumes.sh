@@ -4,18 +4,18 @@
 INSTANCE_ID=$1
 DRY_RUN=$2
 
-# Get the instance ID of the EC2 node
-# INSTANCE_ID=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId" --filters "Name=tag:Name,Values=$NODE_ID" --output text)
+if [[ -z "$INSTANCE_ID" ]]; then
+    echo "Usage: $0 <instance-id> [--dry-run]"
+    exit 1
+fi
 
-echo "Instance ID: $INSTANCE_ID"
+echo "-  Instance ID: $INSTANCE_ID"
 
 # List all EBS volumes attached to the node
 ATTACHED_VOLUMES=$(aws ec2 describe-volumes --filters "Name=attachment.instance-id,Values=$INSTANCE_ID" --query "Volumes[*].VolumeId" --output text)
-
-# Make a list of the attached volumes text
 ATTACHED_VOLUMES=$(echo "$ATTACHED_VOLUMES" | tr '  ' ' ')
 
-echo "Attached Volumes: $ATTACHED_VOLUMES"
+echo "-  Attached Volumes: $ATTACHED_VOLUMES"
 
 # Get all PersistentVolumes in the Kubernetes cluster
 K8S_PVS=$(kubectl get pv --no-headers -o custom-columns=":spec.awsElasticBlockStore.volumeID" | awk -F'/' '{print $NF}')
@@ -23,6 +23,7 @@ K8S_PVS+=$'\n'
 K8S_PVS+=$(kubectl get pv --no-headers -o custom-columns=":spec.csi.volumeHandle" | awk -F'/' '{print $NF}')
 
 # Initialize an empty array to hold orphaned volumes
+echo 
 ORPHANED_VOLUMES=()
 
 # Check each attached volume against Kubernetes PVs
@@ -41,10 +42,10 @@ for VOLUME in $ATTACHED_VOLUMES; do
         pv_exist=$(kubectl get pv | grep "$pv_name" | awk '{print $1}')
         pvc_exist=$(kubectl get pvc -A | grep "$pv_name" | awk '{print $2}')
 
-        echo ">> VOLUME_NAME: $volume_name"
-        echo ">> PV_NAME: $pv_name"
-        echo ">> PV: $pv_exist"
-        echo ">> PVC: $pvc_exist"
+        echo "-  VOLUME_NAME: $volume_name"
+        echo "-  PV_NAME: $pv_name"
+        echo "-  PV: $pv_exist"
+        echo "-  PVC: $pvc_exist"
         
         if [[ $pv_exist == "" ]]; then
             echo "-- PV '$pv_name' - Volume $VOLUME"
@@ -90,10 +91,8 @@ for VOLUME in "${ORPHANED_VOLUMES[@]}"; do
         aws ec2 detach-volume --volume-id "$volume_id" --dry-run
     else
         aws ec2 detach-volume --volume-id "$volume_id" | jq
-        # aws wait volume-available --volume-ids "$volume_id"
     fi
-    echo "Press [Enter] to continue..." && read
-    # aws ec2 wait volume-available --volume-ids "$volume_id"
 done
 
 
+echo

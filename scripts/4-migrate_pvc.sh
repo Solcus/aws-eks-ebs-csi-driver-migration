@@ -18,21 +18,16 @@ fi
 
 # GET Volume information
 VOLUME_NAME=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.volumeName}')
-# VOLUME_ID=$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}')
 
-# If the olddriver is kubernetes.io/aws-ebs, then the volumeID is in awsElasticBlockStore.volumeID
-# If the olddriver is ebs.csi.aws.com, then the volumeID is in csi.volumeHandle
+# GET the volume ID based on the CSI driver type
 if [[ "$OLD_CSI_DRIVER" == "kubernetes.io/aws-ebs" ]]; then
   VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}' | awk -F'vol-' '{print $2}')"
 elif [[ "$OLD_CSI_DRIVER" == "ebs.csi.aws.com" ]]; then
   VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.csi.volumeHandle}' | awk -F'vol-' '{print $2}')"
 fi
 
-# VOLUME_ID="vol-$(kubectl get pv $VOLUME_NAME -o jsonpath='{.spec.awsElasticBlockStore.volumeID}' | awk -F'vol-' '{print $2}')"
 VOLUME_SIZE=$(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.resources.requests.storage}')
 VOLUME_DELETION_POLICY=$(kubectl get pv $(kubectl get pvc $PVC_NAME -n $NAMESPACE -o jsonpath='{.spec.volumeName}') -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')
-
-
 
 echo "NAMESPACE: $NAMESPACE"
 echo "PVC_NAME: $PVC_NAME"
@@ -168,16 +163,12 @@ if [ "$VS_READY" != "true" ]; then
   fi
 fi
 
-# [[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to set the PV reclaim policy to Retain..." && read
-
 # Set volume to Retain
 if [ "$DRY_RUN" != "false" ]; then
   echo ">> DRY_RUN: Skipping PV reclaim policy update"
 else
   kubectl patch pv $VOLUME_NAME -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
 fi
-
-# [[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to replace the PVC and PV..." && read
 
 # REMOVE the old PVC
 kubectl delete pvc $PVC_NAME -n $NAMESPACE &
@@ -280,7 +271,6 @@ echo ">> Detaching old volume from the node instance..."
 if [[ $DRY_RUN == "false" ]]; then
     sleep 5
     aws ec2 detach-volume --volume-id $VOLUME_ID | jq
-    # aws ec2 wait volume-available --volume-ids $VOLUME_ID
 else 
     set +e
     aws ec2 detach-volume --volume-id $VOLUME_ID --dry-run
