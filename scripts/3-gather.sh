@@ -4,6 +4,8 @@ echo ">> Listing PVCs using SC '$OLD_STORAGE_CLASS' in namespaces: $namespaces"
 
 touch $runtime_folder/temp-pvcs-with-default-sc.txt $runtime_folder/temp-pvcs-with-custom-sc.txt
 
+set +e
+
 for namespace in $namespaces; do
     pvcs=$(kubectl get pvc -n $namespace | grep " $OLD_STORAGE_CLASS ")
     
@@ -35,11 +37,13 @@ for namespace in $namespaces; do
     done <<< "$pvcs"
 done
 
+set -e
+
 echo ">> PVCs using default SC: (automatic migration)"
 if [[ -s $runtime_folder/temp-pvcs-with-default-sc.txt ]]; then
     cat $runtime_folder/temp-pvcs-with-default-sc.txt
 else
-    echo "None"
+    echo "-  None"
 fi
 echo
 
@@ -47,6 +51,8 @@ echo ">> PVCs using custom SC: (needs manual migration for maintainers side)"
 if [[ -s $runtime_folder/temp-pvcs-with-custom-sc.txt ]]; then
     cat $runtime_folder/temp-pvcs-with-custom-sc.txt
 else
-    echo "None"
+    echo "-  None"
 fi
 echo 
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to start migrating..." && read

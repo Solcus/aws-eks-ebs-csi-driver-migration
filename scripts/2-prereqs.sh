@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
 
-# CHECK and CREATE new storage class / snapshot class
-
-if [[ $create_new_storage_class == "true" || $create_new_snapshot_class == "true" ]]; then
-    echo ">> Creation of StorageClass/SnapshotClass is required. Please set the required parameters."
-    echo ">> This is not automated due to potential interference with IaC and lack of security hardening."
-    exit 1
-fi
-
 # CHECK and SET volumeBindingMode
 given_parameters=$(echo $parameters | sed 's/,/ /g')
 
@@ -40,3 +32,5 @@ if [[ "$migr_volumeBindingMode" != "Immediate" ]]; then
 fi
 
 echo
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to gather PVC information..." && read

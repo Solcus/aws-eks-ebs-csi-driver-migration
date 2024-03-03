@@ -4,19 +4,28 @@
 # :: SETS global variables
 
 # Default values
+
+set -e
+
 new_storage_class_name=""
 new_snapshot_class_name=""
 snapshot_prefix=""
 namespaces=""
 
 runtime_folder="$(dirname $0)/.runtime"
+rm -drf $runtime_folder
 mkdir -p $runtime_folder
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
-        --storage-class|-s)
+        --old-sc|-o)
+            old_storage_class_name="$2"
+            shift # past argument
+            shift # past value
+            ;;
+        --new-sc|-s)
             new_storage_class_name="$2"
             shift # past argument
             shift # past value
@@ -26,6 +35,16 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             shift # past value
             ;;
+        # --storage-class|-s)
+        #     new_storage_class_name="$2"
+        #     shift # past argument
+        #     shift # past value
+        #     ;;
+        # --snapshot-class|-S)
+        #     new_snapshot_class_name="$2"
+        #     shift # past argument
+        #     shift # past value
+        #     ;;
         --snapshot-prefix|-P)
             snapshot_prefix="$2"
             shift # past argument
@@ -45,6 +64,10 @@ while [[ $# -gt 0 ]]; do
             dry_run="true"
             shift # past argument
             ;;
+        --step-by-step|-b)
+            step_by_step="true"
+            shift # past argument
+            ;;
         *)    # unknown option
             shift # past argument
             ;;
@@ -54,41 +77,43 @@ done
 
 # SET variables
 DRY_RUN=${dry_run:-"false"}
+STEP_BY_STEP=${step_by_step:-"false"}
 
-## CSI Drivers
-OLD_CSI_DRIVER="kubernetes.io/aws-ebs"  # in-tree driver - deprecated in K8S v1.27
-NEW_CSI_DRIVER="ebs.csi.aws.com"        # AWS EBS CSI driver
+# Set Storage class
+[[ -z "$old_storage_class_name" ]] && echo "!! Please provide the old storage class name: --old-sc|-o" && exit 1
+OLD_STORAGE_CLASS=$old_storage_class_name
+
+# Set new storage class
+[[ -z "$new_storage_class_name" ]] && echo "!! Please provide the new storage class name: --new-sc|-s" && exit 1
+NEW_STORAGE_CLASS=$new_storage_class_name
+
+# Set new snapshot class
+[[ -z "$new_snapshot_class_name" ]] && echo "!! Please provide the snapshot class name: --snapshot-class|-S" && exit 1
+NEW_SNAPSHOT_CLASS=$new_snapshot_class_name
+
+# Get SC CSI Drivers
+OLD_CSI_DRIVER=$(kubectl get sc $OLD_STORAGE_CLASS -o jsonpath='{.provisioner}')
+NEW_CSI_DRIVER=$(kubectl get sc $NEW_STORAGE_CLASS -o jsonpath='{.provisioner}')
 
 ## Storage Classes
-OLD_STORAGE_CLASS=$(kubectl get sc | grep "$OLD_CSI_DRIVER" | awk '{print $1}')
-NEW_STORAGE_CLASS=$(kubectl get sc | grep "$NEW_CSI_DRIVER" | awk '{print $1}')
+# OLD_STORAGE_CLASS=$(kubectl get sc -o jsonpath='{.items[?(@.provisioner=="'$OLD_CSI_DRIVER'")].metadata.name}')
 
-create_new_storage_class="false"
-
-[[ -z "$OLD_STORAGE_CLASS" ]] && echo "No storage class found for $OLD_CSI_DRIVER" 1>&2 && exit 1
-
-if [[ -z "$NEW_STORAGE_CLASS" && -z "$new_storage_class_name" ]]; then
-    echo "No storage class found for $NEW_CSI_DRIVER" 1>&2
-    echo "Please provide a storage class name for $NEW_CSI_DRIVER using --storage-class to create one." 1>&2
-    exit 1
-elif [[ $new_storage_class_name && $NEW_STORAGE_CLASS != "$new_storage_class_name" ]]; then
-    NEW_STORAGE_CLASS="$new_storage_class_name"
-    create_new_storage_class="true"
-fi
+# If new storage class var is set, use that, else lookup
+# if [[ -z "$new_storage_class_name" ]]; then
+#     NEW_STORAGE_CLASS=$(kubectl get sc | grep "$NEW_CSI_DRIVER" | awk '{print $1}' | head -n 1)
+# else
+#     NEW_STORAGE_CLASS="$new_storage_class_name"
+# fi
 
 ## Volume Snapshot Classes
-NEW_SNAPSHOT_CLASS=$(kubectl get volumesnapshotclass | grep "$NEW_CSI_DRIVER" | awk '{print $1}')
+# if [[ -z "$new_snapshot_class_name" ]]; then
+#     NEW_SNAPSHOT_CLASS=$(kubectl get volumesnapshotclass | grep "$NEW_CSI_DRIVER" | awk '{print $1}' | head -n 1)
+# else
+#     NEW_SNAPSHOT_CLASS="$new_snapshot_class_name"
+# fi
 
-create_new_snapshot_class="false"
-
-if [[ -z "$NEW_SNAPSHOT_CLASS" && -z "$new_snapshot_class_name" ]]; then
-    echo "No volume snapshot class found for $NEW_CSI_DRIVER" 1>&2
-    echo "Please provide a volume snapshot class name for $NEW_CSI_DRIVER using --snapshot-class to create one." 1>&2
-    exit 1
-elif [[ $new_snapshot_class_name && $NEW_SNAPSHOT_CLASS != "$new_snapshot_class_name" ]]; then
-    NEW_SNAPSHOT_CLASS="$new_snapshot_class_name"
-    create_new_snapshot_class="true"
-fi
+# NEW_SNAPSHOT_CLASS=$(kubectl get volumesnapshotclass | grep "$NEW_CSI_DRIVER" | awk '{print $1}' | head -n 1)
+vsc_api_version=$(kubectl get volumesnapshotclass $NEW_SNAPSHOT_CLASS -o jsonpath='{.apiVersion}')
 
 ## Remote snapshot prefix
 [[ -z "$snapshot_prefix" ]] && snapshot_prefix="mtcv2-$(date +%s)-"
@@ -104,12 +129,19 @@ fi
 cat << EOF
 >> Global variables set:
 DRY_RUN            : $DRY_RUN
+
 OLD_STORAGE_CLASS  : $OLD_STORAGE_CLASS
+OLD_CSI_DRIVER     : $OLD_CSI_DRIVER
+
 NEW_STORAGE_CLASS  : $NEW_STORAGE_CLASS
+NEW_CSI_DRIVER     : $NEW_CSI_DRIVER
+
 NEW_SNAPSHOT_CLASS : $NEW_SNAPSHOT_CLASS
-CREATE_NEW_SC      : $create_new_storage_class
-CREATE_NEW_VSC     : $create_new_snapshot_class
-PARAMETERS         : $parameters
+VSC_API_VERSION    : $vsc_api_version
 SNAPSHOT_PREFIX    : $snapshot_prefix
+
+PARAMETERS         : $parameters
 NAMESPACES         : $namespaces
 EOF
+
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to start validating..." && read

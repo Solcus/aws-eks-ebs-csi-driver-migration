@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 # RESTORE StorageClass defaults
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to update the SC..." && read
+
 if [[ "$migr_volumeBindingMode" != $(kubectl get sc $NEW_STORAGE_CLASS -o jsonpath='{.volumeBindingMode}') ]]; then
     echo ">> Finalizing StorageClass $NEW_STORAGE_CLASS"
     echo ">> Restoring volumeBindingMode to $migr_volumeBindingMode"
@@ -14,4 +16,6 @@ if [[ "$migr_volumeBindingMode" != $(kubectl get sc $NEW_STORAGE_CLASS -o jsonpa
 fi
 
 # REMOVE temporary files
+[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to delete the runtime folder..." && read
+
 rm -drf $runtime_folder

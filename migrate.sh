@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# Preperations
 source ./scripts/0-args.sh
 source ./scripts/1-validate.sh
 source ./scripts/2-prereqs.sh
@@ -10,13 +11,12 @@ echo ">> Automatic migration"
 while read -r pvc; do
     namespace=$(echo $pvc | awk '{print $1}')
     pvc_name=$(echo $pvc | awk '{print $2}')
-    
-    if [[ $DRY_RUN == "false" ]]; then
-        echo "> Migrating PVC $pvc_name in namespace $namespace"
-        source ./scripts/4-migrate_pvc.sh $namespace $pvc_name
-    else
-        echo "> DRY_RUN: source ./scripts/4-migrate.sh $namespace $pvc_name"
-    fi
+
+    echo "> Migrating PVC $pvc_name in namespace $namespace"
+
+    source ./scripts/4-migrate_pvc.sh $namespace $pvc_name
+
 done <<< "$(cat $runtime_folder/temp-pvcs-with-default-sc.txt)"
 
+# Cleanup
 source ./scripts/5-cleanup.sh
