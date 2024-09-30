@@ -34,7 +34,7 @@ The new correct driver: `ebs.csi.aws.com`
 - After June 11th 2024, the standard **SUPPORT WILL END** for v1.26. https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html#kubernetes-release-calendar
 - The old in-tree CSI driver interferes with the Snapshotcontroller. https://stackoverflow.com/a/75626313
 
-However, this tool can also be used to migrate from any EBS storage class to another EBS storage class, for example when you want to change the type of EBS volume.
+Also, this tool can be used to migrate from any EBS storage class to another EBS storage class as well, for example when you want to change the type of EBS volume.
 This is a common usecase when moving from GP2 to GP3 volumes [AWS DOCS](https://aws.amazon.com/blogs/containers/migrating-amazon-eks-clusters-from-gp2-to-gp3-ebs-volumes/).
 
 
