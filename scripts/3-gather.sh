@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo ">> Listing PVCs using SC '$OLD_STORAGE_CLASS' in namespaces: $namespaces"
+echo "$(date +'%H:%M:%S') >> Listing PVCs using SC '$OLD_STORAGE_CLASS' in namespaces: $namespaces"
 
 touch $runtime_folder/temp-pvcs-with-default-sc.txt $runtime_folder/temp-pvcs-with-custom-sc.txt
 
@@ -20,13 +20,13 @@ for namespace in $namespaces; do
         fi
 
         # Describe PVC to check who uses it
-        pvc_user=$(kubectl describe pvc $pvc_name -n $namespace | grep "Used By:" | awk '{print $3}')
-        
-        # Describe pvc user to check Controlled By
-        pvc_controller=$(kubectl describe pod $pvc_user -n $namespace | grep "Controlled By:" | awk '{print $3}')
+        # pvc_user=$(kubectl describe pvc $pvc_name -n $namespace | grep "Used By:" | awk '{print $3}')
+        pvc_user=$(kubectl get pod -n $namespace -o jsonpath='{.items[?(@.spec.volumes[*].persistentVolumeClaim.claimName=="'$PVC_NAME'")].metadata.name}')
 
-        # Check if there is a StorageClass set in the PVC, then store it in a list of manual pvcs, else automatic pvcs
-        pvc_sc=$(kubectl describe $pvc_controller -n $namespace | grep "StorageClass: " | awk '{print $2}')
+        if [ ! -z "$pvc_user" ]; then
+            pvc_controller=$(kubectl describe pod $pvc_user -n $namespace | grep "Controlled By:" | awk '{print $3}')
+            pvc_sc=$(kubectl describe $pvc_controller -n $namespace | grep "StorageClass: " | awk '{print $2}')
+        fi
 
         if [[ -z "$pvc_sc" ]]; then
             echo "$namespace $pvc_name" >> $runtime_folder/temp-pvcs-with-default-sc.txt
@@ -39,20 +39,18 @@ done
 
 set -e
 
-echo ">> PVCs using default SC: (automatic migration)"
+echo "$(date +'%H:%M:%S') >> PVCs using default SC: (automatic migration)"
 if [[ -s $runtime_folder/temp-pvcs-with-default-sc.txt ]]; then
     cat $runtime_folder/temp-pvcs-with-default-sc.txt
 else
-    echo "-  None"
+    echo "$(date +'%H:%M:%S') -  None"
 fi
 echo
 
-echo ">> PVCs using custom SC: (needs manual migration for maintainers side)"
+echo "$(date +'%H:%M:%S') >> PVCs using custom SC: (needs manual migration for maintainers side)"
 if [[ -s $runtime_folder/temp-pvcs-with-custom-sc.txt ]]; then
     cat $runtime_folder/temp-pvcs-with-custom-sc.txt
 else
-    echo "-  None"
+    echo "$(date +'%H:%M:%S') -  None"
 fi
 echo 
-
-[[ $STEP_BY_STEP == "true" ]] && echo && echo "Press [Enter] to start migrating..." && read

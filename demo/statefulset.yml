@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ts-demo-statefulset
+  namespace: test-csi-migration
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ts-demo-sfs
+  serviceName: ts-demo-sfs
+  template:
+    metadata:
+      labels:
+        app: ts-demo-sfs
+    spec:
+      containers:
+      - name: app
+        image: centos
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"]
+        volumeMounts:
+        - name: ts-demo-sfs-pvc
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: ts-demo-sfs-pvc
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: 
+      resources:
+        requests:
+          storage: 1Gi

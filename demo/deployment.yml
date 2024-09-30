@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ts-demo-deployment
+  namespace: test-csi-migration
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ts-demo-deploy
+  template:
+    metadata:
+      labels:
+        app: ts-demo-deploy
+    spec:
+      containers:
+      - name: app
+        image: centos
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"]
+        volumeMounts:
+        - name: persistent-storage
+          mountPath: /data
+      volumes:
+      - name: persistent-storage
+        persistentVolumeClaim:
+          claimName: ts-demo-deploy-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ts-demo-deploy-pvc
+  namespace: test-csi-migration
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: 1Gi

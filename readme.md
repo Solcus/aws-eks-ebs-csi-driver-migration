@@ -5,18 +5,21 @@ WARNING: This flow is still being tested and patched and not yet ready to use.
 
 With the upgrade of the EKS cluster to version 1.27, the in-tree CSI Driver for AWS EBS Volumes will be deprecated. 
 This module is used to migrate the EBS volumes to the new CSI driver for AWS EBS volumes.
+It can also be used to migrate from any EBS storage class to another EBS storage class, for example when you want to change the type of EBS volume.
+This is a common usecase when moving from GP2 to GP3 volumes.
 
 <div style="color:grey">
     <sub>
         <b>Tags:</b>
-        #AWS #EKS #EBS #CSIDriver #CSI #migration #Kubernetes #K8s #v1.27 #deprecation #in-tree #volumes #snapshots 
+        #AWS #EKS #EBS #CSIDriver #CSI #migration #Kubernetes #K8s #v1.27 #deprecation #in-tree #volumes #snapshots #storageclass #PVC #PV #GP2 #GP3 
     </sub>
 </div>
 
+---
+
 ## Context
 
-The in-tree CSI Driver for AWS EBS Volumes in Kubernetes is deprecated and will be removed with With `version 1.27`.
-
+The initial intent is to deal with the fact that the in-tree CSI Driver for AWS EBS Volumes in Kubernetes is deprecated and will be removed with With `version 1.27`.
 This will cause trouble upon upgrading Kubernetes, because it would affect all existing resources that make use of the deprecated driver.
 
 The old deprecated driver: `kubernetes.io/aws-ebs` 
@@ -28,9 +31,13 @@ The new correct driver: `ebs.csi.aws.com`
 - After June 11th 2024, the standard **SUPPORT WILL END** for v1.26. https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html#kubernetes-release-calendar
 - The old in-tree CSI driver interferes with the Snapshotcontroller. https://stackoverflow.com/a/75626313
 
+However, this tool can also be used to migrate from any EBS storage class to another EBS storage class, for example when you want to change the type of EBS volume.
+This is a common usecase when moving from GP2 to GP3 volumes [AWS DOCS](https://aws.amazon.com/blogs/containers/migrating-amazon-eks-clusters-from-gp2-to-gp3-ebs-volumes/).
+
+
 ## Verify
 
-How to verify if this relevant for your cluster:
+How to verify if a migration from the in-tree driver is relevant for your cluster:
 
 1. Check the version of your cluster.
     ```bash
@@ -125,16 +132,24 @@ You can optionally specify the target StorageClass, SnapshotClass, SnapshotPrefi
 
 ```bash
 bash migrate.sh \
-    --storage-class "storageclassname" \
-    # OPTIONAL: Specify the target storageclass
+    --old-sc "storageclassname" \
+    # MANDATORY: Specify the old storageclass
+    --new-sc "storageclassname" \ 
+    # MANDATORY: Specify the new storageclass
     --snapshot-class "snapshotclassname" \
-    # OPTIONAL: Specify the target snapshotclass
+    # MANDATORY: Specify the target snapshotclass
     --snapshot-prefix "migration-" \
     # OPTIONAL: Specify the prefix for the snapshots in AWS
     --parameters "key1=value1,key2=value2" \
     # OPTIONAL: Specify the parameters for the snapshotclass or storageclass
     --namespaces "default,namespace1" \
     # OPTIONAL: Specify the namespaces to migrate. If not specified, all namespaces are migrated. 
+    --step-by-step \
+    # OPTIONAL: Run the migration step by step. This will pause after every step to allow for manual verification.
+    --cluster-scale \
+    # OPTIONAL: Downscale the deployments and statefulsets in the cluster to 0 before migration and scale back up after migration.
+    --pod-recreate \
+    # OPTIONAL: Recreate the pods after the migration to ensure they are using the new PVC. If you wont, you have to manually restart the pods to reconnect to the volumes. ADVISED TO USE THIS.
     --dry-run
     # OPTIONAL: Run the migration in dryrun mode. This will not make any changes to the cluster.
 ```

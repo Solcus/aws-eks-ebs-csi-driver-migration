@@ -1,0 +1,26 @@
+1. migration from any SC to any SC 
+(works! - tested back and forth between gp2, aws-ebs-gp2 and aws-ebs-gp3)
+
+2. snapshot during traffic 
+(works, but about 30 seconds of datagap -> solution is to down/upscale the cluster resources)
+
+3. restore broken pvc after migration 
+(works! pvc manifest is stored in backup - can be reattached to snapshot - no dataloss)
+
+4. downscale clusters deployments/statefulsets to 0 
+(works! stores a backup of original replica counts - works on namespace base level)
+
+5. upscale clusters deployments/statefulsets to original replica counts 
+(works! restores original replica counts based on backupfile)
+
+6. migration with downscaled cluster 
+(works like a charm)
+
+7. data persistence after upscaled cluster 
+(works! - no dataloss)
+
+
+8. migrate without pod recreation
+(fail! - without pod recreation, it cannot find the new volume
+the pod recreation however, works in a rolling update fashion, so in case there is more then 1 replica, there doesnt have to be any downtime.
+The pod recreation works fine.)
