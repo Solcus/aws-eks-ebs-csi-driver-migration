@@ -1,7 +1,10 @@
-WARNING: This flow is still being tested and patched and not yet ready to use.
 
 
 # AWS EBS CSI Migration (EKS)
+
+!!! tip
+    This solution has been battletested in Production. 
+    Check 'demo/scenarios' for the tested scenarios.
 
 With the upgrade of the EKS cluster to version 1.27, the in-tree CSI Driver for AWS EBS Volumes will be deprecated. 
 This module is used to migrate the EBS volumes to the new CSI driver for AWS EBS volumes.
